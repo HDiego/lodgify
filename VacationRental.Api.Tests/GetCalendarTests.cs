@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using VacationRental.Api.Models;
@@ -22,7 +21,8 @@ namespace VacationRental.Api.Tests
         {
             var postRentalRequest = new RentalBindingModel
             {
-                Units = 2
+                Units = 2,
+                PreparationTimeInDays = 1
             };
 
             ResourceIdViewModel postRentalResult;

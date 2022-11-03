@@ -2,8 +2,10 @@
 
 namespace VacationRental.Api.Models
 {
-    public class RentalBindingModel
+    public class RentalUpdateModel
     {
+        [Required]
+        public int RentalId { get; set; }
         [Required]
         public int Units { get; set; }
         [Required]
