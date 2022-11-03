@@ -1,7 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using VacationRental.Api.Models;
+using VacationRental.Api.Utils;
 
 namespace VacationRental.Api.Controllers
 {
@@ -22,40 +23,44 @@ namespace VacationRental.Api.Controllers
 
         [HttpGet]
         [Route("{bookingId:int}")]
-        public BookingViewModel Get(int bookingId)
+        public ActionResult<BookingViewModel> Get(int bookingId)
         {
             if (!_bookings.ContainsKey(bookingId))
-                throw new ApplicationException("Booking not found");
+            {
+                return BadRequest("Booking not found");
+            }    
 
-            return _bookings[bookingId];
+            return Ok(_bookings[bookingId]);
         }
 
         [HttpPost]
-        public ResourceIdViewModel Post(BookingBindingModel model)
+        public ActionResult<ResourceIdViewModel> Post(BookingBindingModel model)
         {
             if (model.Nights <= 0)
-                throw new ApplicationException("Nigts must be positive");
-            if (!_rentals.ContainsKey(model.RentalId))
-                throw new ApplicationException("Rental not found");
-
-            for (var i = 0; i < model.Nights; i++)
             {
-                var count = 0;
-                foreach (var booking in _bookings.Values)
-                {
-                    if (booking.RentalId == model.RentalId
-                        && (booking.Start <= model.Start.Date && booking.Start.AddDays(booking.Nights) > model.Start.Date)
-                        || (booking.Start < model.Start.AddDays(model.Nights) && booking.Start.AddDays(booking.Nights) >= model.Start.AddDays(model.Nights))
-                        || (booking.Start > model.Start && booking.Start.AddDays(booking.Nights) < model.Start.AddDays(model.Nights)))
-                    {
-                        count++;
-                    }
-                }
-                if (count >= _rentals[model.RentalId].Units)
-                    throw new ApplicationException("Not available");
+                return BadRequest("Nigts must be positive");
+            }
+            if (!_rentals.ContainsKey(model.RentalId))
+            {
+                return BadRequest("Rental not found");
             }
 
+            int count = 0;
+            for (var i = 0; i < model.Nights; i++)
+            {
+                var rental = _rentals[model.RentalId];
+                count = BookingUtilities.CalculateUnitsOccuped(_bookings.Values.ToList(), rental, model.Start, model.Nights);
+                
+                if (count >= _rentals[model.RentalId].Units)
+                {
+                    return BadRequest("Not available");
+                }
+            }
 
+            if(count >= 0)
+            {
+                count++;
+            }
             var key = new ResourceIdViewModel { Id = _bookings.Keys.Count + 1 };
 
             _bookings.Add(key.Id, new BookingViewModel
@@ -63,10 +68,11 @@ namespace VacationRental.Api.Controllers
                 Id = key.Id,
                 Nights = model.Nights,
                 RentalId = model.RentalId,
-                Start = model.Start.Date
+                Start = model.Start.Date,
+                Unit = count
             });
 
-            return key;
+            return Ok(key);
         }
     }
 }
